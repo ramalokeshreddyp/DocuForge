@@ -1,285 +1,284 @@
-# Collaborative Document Store
+# DocuForge - Collaborative Document Store
 
-A **production-ready collaborative wiki backend** built with **Node.js**, **Express**, and **MongoDB 7**. Implements optimistic concurrency control, full-text search, analytics aggregation pipelines, and schema migration strategies.
+![Node.js](https://img.shields.io/badge/Node.js-20%2B-2f7d32?style=for-the-badge&logo=node.js&logoColor=white)
+![Express](https://img.shields.io/badge/Express-4.18-black?style=for-the-badge&logo=express&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-7-0f9d58?style=for-the-badge&logo=mongodb&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-0b69c7?style=for-the-badge&logo=docker&logoColor=white)
 
----
+A production-grade backend for collaborative wiki-style document authoring with optimistic concurrency control, full-text search, analytics aggregations, and schema migration support.
 
-## 🚀 Quick Start
+## 1. Project Overview
 
-### Prerequisites
+DocuForge provides a robust backend API to create, update, search, analyze, and migrate document data at scale. It is designed for environments where multiple users may edit content concurrently and where indexing, analytics, and schema evolution must coexist without downtime.
 
-- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed
+Core capabilities:
+- Document CRUD with server-generated slug management
+- Optimistic concurrency control (version-safe updates)
+- Full-text search with weighted relevance scoring
+- Tag-filtered search with AND semantics
+- Analytics endpoints using MongoDB aggregation pipelines
+- Lazy schema compatibility and background migration tooling
+- Auto-seeding of 10,000 documents for realistic load simulation
 
-### Run with Docker Compose
+## 2. Tech Stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| Runtime | Node.js 20+ | High-performance JavaScript server runtime |
+| Framework | Express 4 | REST API routing and middleware pipeline |
+| Database | MongoDB 7 | Document persistence, text indexing, aggregation |
+| Driver | mongodb v6 | Native driver for efficient DB access |
+| Utilities | slugify, diff | Slug generation and revision diff metadata |
+| Containerization | Docker + Docker Compose | Reproducible local/dev deployment |
+
+## 3. System Landscape
+
+```mermaid
+flowchart LR
+  U[Client Apps / API Consumers] --> A[Express API]
+  A --> D[(MongoDB 7)]
+  A --> S[Seeder Module]
+  A --> R1[Documents Routes]
+  A --> R2[Search Route]
+  A --> R3[Analytics Route]
+  M[Migration Script] --> D
+```
+
+## 4. Workflow and Execution Flow
+
+### 4.1 Application Bootstrap Flow
+
+```mermaid
+flowchart TD
+  S[Start src/index.js] --> C[Connect MongoDB]
+  C --> I[Ensure indexes]
+  I --> Q{Collection empty?}
+  Q -- Yes --> SD[Seed 10,000 docs]
+  Q -- No --> SK[Skip seeding]
+  SD --> B[Bind middleware + routes]
+  SK --> B
+  B --> L[Listen on configured PORT]
+```
+
+### 4.2 Request Lifecycle
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant API as Express API
+  participant DB as MongoDB
+
+  Client->>API: HTTP Request
+  API->>API: Validate payload/query
+  API->>DB: Query or mutation
+  DB-->>API: Result / no match
+  API->>API: Transform old author schema if needed
+  API-->>Client: JSON response
+```
+
+### 4.3 Optimistic Concurrency (Update Path)
+
+```mermaid
+sequenceDiagram
+  participant UserA
+  participant UserB
+  participant API
+  participant DB
+
+  UserA->>API: GET /api/documents/:slug
+  API->>DB: findOne(slug)
+  DB-->>API: version = 8
+  API-->>UserA: doc(version 8)
+
+  UserB->>API: PUT with version 8
+  API->>DB: findOneAndUpdate({slug, version:8})
+  DB-->>API: success, version=9
+  API-->>UserB: 200 updated doc
+
+  UserA->>API: PUT with stale version 8
+  API->>DB: findOneAndUpdate({slug, version:8})
+  DB-->>API: no match
+  API->>DB: findOne(slug)
+  DB-->>API: latest version 9
+  API-->>UserA: 409 conflict + latest doc
+```
+
+## 5. Code Structure and Folder Organization
+
+```text
+.
+|- docker-compose.yml
+|- Dockerfile
+|- package.json
+|- README.md
+|- architecture.md
+|- projectdocumentation.md
+|- scripts/
+|  |- migrate_author_schema.js
+|- src/
+   |- db.js
+   |- index.js
+   |- seed.js
+   |- middleware/
+   |  |- errorHandler.js
+   |- routes/
+      |- analytics.js
+      |- documents.js
+      |- search.js
+```
+
+## 6. Setup and Installation
+
+### 6.1 Prerequisites
+- Node.js 20+
+- npm 10+
+- Docker Desktop (for containerized run)
+- MongoDB instance (only needed for non-Docker local run)
+
+### 6.2 Environment Configuration
+
+1. Copy environment template:
 
 ```bash
-# 1. Copy environment variables (or use defaults — they work out of the box)
 cp .env.example .env
+```
 
-# 2. Start all services (MongoDB + API)
+2. Default variables:
+
+| Variable | Default | Notes |
+|---|---|---|
+| MONGO_URI | mongodb://mongo:27017 | Use localhost URI for local non-Docker run |
+| DATABASE_NAME | wikidocs | Logical database name |
+| PORT | 3000 | API bind port |
+
+## 7. Run Locally
+
+### 7.1 Docker Compose (Recommended)
+
+```bash
 docker-compose up --build
 ```
 
-The API will be available at **http://localhost:3000**.
+Available endpoints:
+- http://localhost:3000/health
+- http://localhost:3000/api/documents
+- http://localhost:3000/api/search
+- http://localhost:3000/api/analytics/most-edited
+- http://localhost:3000/api/analytics/tag-cooccurrence
 
-On first run, the application automatically:
-1. Connects to MongoDB
-2. Creates indexes (`slug` unique, `title`+`content` text search)
-3. Seeds **10,000 synthetic wiki documents** (with ~10% using the old schema for migration testing)
+### 7.2 Native Node.js Run
 
----
-
-## 📐 Architecture
-
-```
-docker-compose
-├── mongo (MongoDB 7)     — Port 27017  — Volume: mongo_data
-└── api   (Node.js/Express) — Port 3000  — Source: ./src
-
-src/
-├── index.js                # App bootstrap: connect → seed → listen
-├── db.js                   # MongoDB connection singleton
-├── seed.js                 # 10,000 synthetic document seeder
-├── middleware/
-│   └── errorHandler.js     # Global error handling
-└── routes/
-    ├── documents.js         # CRUD + OCC + lazy schema migration
-    ├── search.js            # Full-text search with tag filtering
-    └── analytics.js         # Aggregation pipeline endpoints
-
-scripts/
-└── migrate_author_schema.js  # Background schema migration (bulkWrite)
+```bash
+npm install
+MONGO_URI=mongodb://localhost:27017 npm start
 ```
 
----
+Development mode with auto-reload:
 
-## 📡 API Reference
+```bash
+MONGO_URI=mongodb://localhost:27017 npm run dev
+```
 
-### Documents
+## 8. Usage Instructions
 
-| Method   | Endpoint                | Description                              |
-|----------|-------------------------|------------------------------------------|
-| `POST`   | `/api/documents`        | Create a new document                    |
-| `GET`    | `/api/documents/:slug`  | Get document by slug (+ lazy migration)  |
-| `PUT`    | `/api/documents/:slug`  | Update with OCC (must include `version`) |
-| `DELETE` | `/api/documents/:slug`  | Delete a document                        |
+### 8.1 Health Check
 
-#### Example: Create Document
+```bash
+curl http://localhost:3000/health
+```
+
+### 8.2 Create Document
+
 ```bash
 curl -X POST http://localhost:3000/api/documents \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "My First Document",
-    "content": "# Hello World\n\nThis is my first wiki page.",
+    "title": "MongoDB Guide",
+    "content": "This is a collaborative wiki page.",
     "tags": ["mongodb", "guide"],
     "authorName": "Jane Doe",
     "authorEmail": "jane@example.com"
   }'
 ```
 
-**Response (201):**
-```json
-{
-  "slug": "my-first-document",
-  "title": "My First Document",
-  "content": "# Hello World\n\nThis is my first wiki page.",
-  "version": 1,
-  "tags": ["mongodb", "guide"],
-  "metadata": {
-    "author": { "id": null, "name": "Jane Doe", "email": "jane@example.com" },
-    "createdAt": "...",
-    "updatedAt": "...",
-    "wordCount": 9
-  },
-  "revision_history": [{ "version": 1, "updatedAt": "...", "authorId": null, "contentDiff": "Initial version" }]
-}
+### 8.3 Fetch Document
+
+```bash
+curl http://localhost:3000/api/documents/mongodb-guide
 ```
 
-#### Example: Update with OCC
+### 8.4 Safe Update with OCC
+
 ```bash
-# Send the current version — server returns 409 Conflict if version is stale
-curl -X PUT http://localhost:3000/api/documents/my-first-document \
+curl -X PUT http://localhost:3000/api/documents/mongodb-guide \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Updated Title",
-    "content": "New content here",
+    "title": "MongoDB Guide v2",
+    "content": "Updated content.",
     "version": 1
   }'
-# → 200 with version: 2 on success
-# → 409 with latest document if version mismatch
 ```
 
-### Search
+### 8.5 Search by Text and Tags
 
 ```bash
-# Full-text search
-curl "http://localhost:3000/api/search?q=mongodb"
-
-# With tag filter (AND — all specified tags must be present)
 curl "http://localhost:3000/api/search?q=mongodb&tags=guide,backend"
 ```
 
-**Response:** Array of documents sorted by relevance score (descending), each including a `score` field.
-
-### Analytics
+### 8.6 Analytics
 
 ```bash
-# Top 10 most-edited documents
 curl http://localhost:3000/api/analytics/most-edited
-
-# Tag co-occurrence pairs sorted by frequency
 curl http://localhost:3000/api/analytics/tag-cooccurrence
 ```
 
-**Tag co-occurrence example response:**
-```json
-[
-  { "tags": ["mongodb", "database"], "count": 42 },
-  { "tags": ["docker", "devops"],    "count": 38 }
-]
-```
-
-### Health Check
+### 8.7 Run Migration Script
 
 ```bash
-curl http://localhost:3000/health
-# → { "status": "ok", "timestamp": "..." }
+npm run migrate
 ```
 
----
+## 9. Data Flow View
 
-## 🔐 Optimistic Concurrency Control (OCC)
-
-Prevents lost updates when multiple users edit the same document simultaneously:
-
-1. Client fetches document → receives `"version": 5`
-2. Client sends `PUT` with changes + `"version": 5`
-3. Server atomically checks: `{ slug: '...', version: 5 }` — if matched, updates and increments to `6`
-4. If another user already updated (version is now `6`):
-   - Server returns **`409 Conflict`** with the **latest** document in the response body
-   - Client can display a merge/diff UI
-
-The key is `findOneAndUpdate` with `version` in the query filter — this is a **single atomic operation** that eliminates race conditions.
-
----
-
-## 🔄 Schema Migration
-
-### Lazy Migration (On-Read)
-
-`GET /api/documents/:slug` automatically upgrades old-schema documents in memory:
-
-| Schema | Format |
-|--------|--------|
-| Old | `"metadata.author": "Jane Doe"` (string) |
-| New | `"metadata.author": { "id": null, "name": "Jane Doe", "email": null }` (object) |
-
-No database writes are performed — the transformation happens transparently in the application layer before sending the response.
-
-### Background Migration Script
-
-Run to permanently migrate all old-schema documents in the database:
-
-```bash
-# Inside Docker
-docker-compose exec api node scripts/migrate_author_schema.js
-
-# Locally (point at your MongoDB instance)
-MONGO_URI=mongodb://localhost:27017 node scripts/migrate_author_schema.js
-
-# With custom batch size (default: 1000)
-BATCH_SIZE=500 node scripts/migrate_author_schema.js
+```mermaid
+flowchart LR
+  A[POST/PUT Requests] --> V[Validation]
+  V --> W[WordCount + Revision metadata]
+  W --> O[OCC filter slug+version for updates]
+  O --> M[(MongoDB documents)]
+  M --> T[Transform old schema on read]
+  T --> J[JSON response]
 ```
 
-The script:
-- Finds all documents where `metadata.author` is a string
-- Processes in configurable batches (default: 1,000) using `bulkWrite` for efficiency
-- Logs progress and final summary
-- Is safe to re-run (idempotent — already-migrated docs are skipped)
+## 10. Verification and Validation Steps
 
----
+1. Bring up database and API.
+2. Verify /health returns status ok.
+3. Create a document and capture slug.
+4. Perform update with correct version and expect HTTP 200 with incremented version.
+5. Repeat update using stale version and expect HTTP 409 with latest document body.
+6. Run text search and validate results include score and descending relevance.
+7. Run both analytics endpoints and validate non-empty arrays.
+8. Execute migration and verify remaining old-schema count reaches 0.
 
-## ⚙️ Environment Variables
+## 11. Production Readiness Notes
 
-See [`.env.example`](.env.example) for all variables.
+Implemented:
+- Atomic OCC update path to prevent lost updates
+- Deterministic indexes for read/query performance
+- Robust startup order through Docker healthchecks and depends_on
+- Global error middleware for consistent API failures
+- Seed tooling and migration tooling for lifecycle support
 
-| Variable        | Default                   | Description                    |
-|-----------------|---------------------------|--------------------------------|
-| `MONGO_URI`     | `mongodb://mongo:27017`   | MongoDB connection string       |
-| `DATABASE_NAME` | `wikidocs`                | Database name                  |
-| `PORT`          | `3000`                    | API server port                |
+Recommended next hardening:
+- Add authentication/authorization (JWT/OIDC)
+- Add rate limiting, request logging, and tracing
+- Add CI pipeline with automated integration tests
+- Add graceful shutdown and readiness probes for orchestrators
 
----
+## 12. Documentation Suite
 
-## 📊 Data Model
-
-```json
-{
-  "_id": "ObjectId",
-  "slug": "mongodb-comprehensive-guide-0-0-0",
-  "title": "MongoDB — Comprehensive Guide",
-  "content": "# MongoDB\n\nMarkdown content...",
-  "version": 12,
-  "tags": ["mongodb", "database", "nosql"],
-  "metadata": {
-    "author": {
-      "id": "user-001",
-      "name": "Alice Chen",
-      "email": "alice.chen@example.com"
-    },
-    "createdAt": "2024-01-15T10:00:00Z",
-    "updatedAt": "2024-03-20T14:30:00Z",
-    "wordCount": 450
-  },
-  "revision_history": [
-    {
-      "version": 12,
-      "updatedAt": "2024-03-20T14:30:00Z",
-      "authorId": "user-001",
-      "contentDiff": "3 line(s) changed"
-    }
-  ]
-}
-```
-
-**Indexes:**
-- `slug`: unique index (primary lookup key)
-- `title` + `content`: text index with weights (`title: 10`, `content: 5`)
-
----
-
-## 🛠️ Development
-
-```bash
-# Install dependencies
-npm install
-
-# Run locally (requires a running MongoDB instance)
-MONGO_URI=mongodb://localhost:27017 npm start
-
-# Development with auto-reload
-MONGO_URI=mongodb://localhost:27017 npm run dev
-
-# Run migration script
-MONGO_URI=mongodb://localhost:27017 npm run migrate
-```
-
----
-
-## 📋 Requirements Checklist
-
-| # | Requirement | Status |
-|---|-------------|--------|
-| 1 | Docker Compose with healthcheck, depends_on, volumes | ✅ |
-| 2 | Auto-seed 10,000+ docs with correct schema & indexes | ✅ |
-| 3 | `POST /api/documents` → 201, version=1, server-generated slug | ✅ |
-| 4 | `GET /api/documents/:slug` → 200/404 | ✅ |
-| 5 | `PUT /api/documents/:slug` OCC success → 200, version incremented | ✅ |
-| 6 | `PUT /api/documents/:slug` OCC conflict → 409 with latest doc | ✅ |
-| 7 | `GET /api/search?q=` with textScore, sorted by relevance | ✅ |
-| 8 | `GET /api/search?q=&tags=` with tag filtering ($all) | ✅ |
-| 9 | `GET /api/analytics/most-edited` top 10 by revision count | ✅ |
-| 10 | `GET /api/analytics/tag-cooccurrence` with counts | ✅ |
-| 11 | `scripts/migrate_author_schema.js` exists and is runnable | ✅ |
-| 12 | Lazy on-read schema migration for old string author | ✅ |
-| 13 | `.env.example` with `MONGO_URI`, `DATABASE_NAME`, `PORT` | ✅ |
+This project ships with:
+- README.md: operational guide and visual overview
+- architecture.md: architecture and design deep dive
+- projectdocumentation.md: complete technical documentation and verification playbook
