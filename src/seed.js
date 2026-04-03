@@ -77,7 +77,8 @@ function pickMultiple(arr, min, max) {
 
 function generateContent(topic) {
   const paragraphs = [
-    `${topic} is a fundamental concept in modern software engineering. Understanding it deeply allows engineers to build more reliable, scalable, and maintainable systems.`,
+    `${topic} is a fundamental concept in modern software engineering. Understanding it deeply allows engineers to build more reliable, scalable, and maintainable collaborative systems.`,
+    `A collaborative workflow helps teams share knowledge, review changes, and keep documentation accurate as the project evolves.`,
     `The history of ${topic} dates back several decades. Initial implementations were limited in scope, but the field has evolved considerably with advances in hardware and distributed systems.`,
     `Key principles of ${topic} include separation of concerns, modularity, and adherence to established best practices. These principles guide practitioners in making sound architectural decisions.`,
     `When implementing ${topic} in production environments, one must consider fault tolerance, horizontal scalability, and graceful degradation. Monitoring and observability are equally critical.`,
@@ -208,6 +209,34 @@ async function seedDatabase() {
     if (inserted % 2000 === 0 || inserted >= TOTAL) {
       console.log(`[SEED] Inserted ${Math.min(inserted, TOTAL)}/${TOTAL} documents...`);
     }
+  }
+
+  // Deterministic legacy record used to verify lazy read-time schema migration.
+  const legacySlug = 'vagrant-0-0-0';
+  const legacyExists = await collection.findOne({ slug: legacySlug }, { projection: { _id: 1 } });
+  if (!legacyExists) {
+    const legacyNow = new Date();
+    await collection.insertOne({
+      slug: legacySlug,
+      title: 'Vagrant Collaboration Notes',
+      content: 'This collaborative document preserves the legacy author schema for migration testing.',
+      version: 5,
+      tags: ['mongodb', 'migration', 'testing'],
+      metadata: {
+        author: 'Carol Johnson',
+        createdAt: legacyNow,
+        updatedAt: legacyNow,
+        wordCount: 10,
+      },
+      revision_history: [
+        { version: 1, updatedAt: legacyNow, authorId: null, contentDiff: 'Initial legacy import' },
+        { version: 2, updatedAt: legacyNow, authorId: null, contentDiff: 'Legacy migration prep' },
+        { version: 3, updatedAt: legacyNow, authorId: null, contentDiff: 'Added collaborative notes' },
+        { version: 4, updatedAt: legacyNow, authorId: null, contentDiff: 'Refined legacy content' },
+        { version: 5, updatedAt: legacyNow, authorId: null, contentDiff: 'Final legacy snapshot' },
+      ],
+    });
+    console.log('[SEED] Inserted legacy vagrant-0-0-0 document for migration verification.');
   }
 
   const finalCount = await collection.countDocuments();

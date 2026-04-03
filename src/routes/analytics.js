@@ -109,7 +109,13 @@ router.get('/tag-cooccurrence', async (req, res, next) => {
       {
         $project: {
           _id: 0,
-          tags: ['$_id.t1', '$_id.t2'],
+          tags: {
+            $cond: [
+              { $lte: ['$_id.t1', '$_id.t2'] },
+              ['$_id.t1', '$_id.t2'],
+              ['$_id.t2', '$_id.t1'],
+            ],
+          },
           count: 1,
         },
       },
