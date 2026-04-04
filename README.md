@@ -7,6 +7,18 @@
 
 A production-grade backend for collaborative wiki-style document authoring with optimistic concurrency control, full-text search, analytics aggregations, and schema migration support.
 
+## Live Deployments
+
+- Documentation site (GitHub Pages): https://ramalokeshreddyp.github.io/DocuForge/
+- Backend API (Render): https://docuforge-api-vppj.onrender.com
+- Health check: https://docuforge-api-vppj.onrender.com/health
+
+Quick API checks:
+
+- https://docuforge-api-vppj.onrender.com/api/search?q=mongodb
+- https://docuforge-api-vppj.onrender.com/api/analytics/most-edited
+- https://docuforge-api-vppj.onrender.com/api/analytics/tag-cooccurrence
+
 ## GitHub Pages
 
 This repository includes a static documentation site built from the markdown files in the repo and deployed through GitHub Pages. The site is generated from `README.md`, `architecture.md`, and `projectdocumentation.md`, so the published docs stay aligned with the source documentation.
