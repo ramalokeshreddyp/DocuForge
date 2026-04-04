@@ -166,6 +166,22 @@ sequenceDiagram
 - API starts only after Mongo health passes.
 - App boot then ensures indexes and data availability.
 
+### 9.3 Render Deployment Model
+- Render web service:
+  - Runs the API container from `Dockerfile`
+  - Uses `/health` for uptime verification
+  - Reads `MONGO_URI` from Render environment variables
+- MongoDB:
+  - Must be provided as an external managed service such as MongoDB Atlas
+  - Keeps the Render app stateless and horizontally deployable
+
+```mermaid
+flowchart LR
+  U[Browser / API Client] --> R[Render Web Service]
+  R --> M[(MongoDB Atlas or external MongoDB)]
+  R --> H[/health endpoint/]
+```
+
 ## 10. Scalability and Performance Considerations
 
 Strengths:

@@ -202,6 +202,11 @@ Required before full production:
 - Add backup/restore and disaster recovery workflows
 - Add graceful shutdown and readiness/liveness probes for orchestrators
 
+Render deployment path:
+- Use the `render.yaml` blueprint for a Docker web service.
+- Point `MONGO_URI` at MongoDB Atlas or another external MongoDB instance.
+- Validate the service with the `/health` endpoint after deployment.
+
 ## 11. Complete Setup Instructions
 
 ### 11.1 Install Dependencies
@@ -233,6 +238,13 @@ MONGO_URI=mongodb://localhost:27017 npm start
 ```bash
 npm run migrate
 ```
+
+### 11.6 Deploy on Render
+
+1. Create or select a MongoDB Atlas cluster.
+2. Add `MONGO_URI` and `DATABASE_NAME` as environment variables in Render.
+3. Import the repository as a Web Service or apply the `render.yaml` blueprint.
+4. Deploy the container and confirm the `/health` endpoint responds with status `ok`.
 
 ## 12. Folder Structure
 

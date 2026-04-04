@@ -14,6 +14,20 @@ This repository includes a static documentation site built from the markdown fil
 The deployment workflow lives in `.github/workflows/pages.yml`, and the generated site can be built locally with `npm run build:pages`.
 Enable GitHub Pages in repository settings and choose GitHub Actions as the source so the workflow can publish the site.
 
+## Render Deployment
+
+The backend API can be deployed on Render as a Docker web service. The deployment blueprint is defined in `render.yaml`, and the app exposes a `/health` endpoint that Render can use for health checks.
+
+Before deploying, create a MongoDB Atlas cluster or another externally reachable MongoDB instance and set `MONGO_URI` in Render to that connection string. The `DATABASE_NAME` default is `wikidocs`.
+
+Deployment flow:
+
+1. Push this repository to GitHub.
+2. Create a new Render Web Service from the repo or apply the `render.yaml` blueprint.
+3. Set `MONGO_URI` to your MongoDB connection string.
+4. Leave `DATABASE_NAME` as `wikidocs` unless you want a different database name.
+5. Deploy and verify `https://<your-service>.onrender.com/health` returns `{"status":"ok"}`.
+
 ## 1. Project Overview
 
 DocuForge provides a robust backend API to create, update, search, analyze, and migrate document data at scale. It is designed for environments where multiple users may edit content concurrently and where indexing, analytics, and schema evolution must coexist without downtime.
