@@ -7,6 +7,13 @@
 
 A production-grade backend for collaborative wiki-style document authoring with optimistic concurrency control, full-text search, analytics aggregations, and schema migration support.
 
+## GitHub Pages
+
+This repository includes a static documentation site built from the markdown files in the repo and deployed through GitHub Pages. The site is generated from `README.md`, `architecture.md`, and `projectdocumentation.md`, so the published docs stay aligned with the source documentation.
+
+The deployment workflow lives in `.github/workflows/pages.yml`, and the generated site can be built locally with `npm run build:pages`.
+Enable GitHub Pages in repository settings and choose GitHub Actions as the source so the workflow can publish the site.
+
 ## 1. Project Overview
 
 DocuForge provides a robust backend API to create, update, search, analyze, and migrate document data at scale. It is designed for environments where multiple users may edit content concurrently and where indexing, analytics, and schema evolution must coexist without downtime.
